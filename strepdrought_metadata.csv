@@ -1,0 +1,73 @@
+sample name,ID,family_pl,family_real,species,site,spcode,trt,soil_wt,ng_ul,affinity
+10-amaF,15,30,bulk,C. amplexicaulis amplex,The Oaks,ama,F,0.05,0.2,serpentine
+2-amaF,3,29,bulk,C. amplexicaulis amplex,The Oaks,ama,F,0.06,2.1,serpentine
+26-amaB,45,30,bulk,C. amplexicaulis amplex,The Oaks,ama,B,0.1,1.6,serpentine
+28-amaB,47,28,bulk,C. amplexicaulis amplex,The Oaks,ama,B,0.12,2.8,serpentine
+3-amaF,6,27,bulk,C. amplexicaulis amplex,The Oaks,ama,F,0.1,3.5,serpentine
+33-amaB,53,29,bulk,C. amplexicaulis amplex,The Oaks,ama,B,0.25,2,serpentine
+56-amaD,127,28,bulk,C. amplexicaulis amplex,The Oaks,ama,D,0.12,0.8,serpentine
+65-amaD,140,29,136,C. amplexicaulis amplex,The Oaks,ama,D,0.1,0.2,serpentine
+72-amaD,153,26,bulk,C. amplexicaulis amplex,The Oaks,ama,D,0.11,1.7,serpentine
+22-breF,34,38,38,S. breweri,Turtle Rock,bre,F,0.59,1.4,serpentine
+23-breF,35,39,39,S. breweri,Turtle Rock,bre,F,0.37,1.2,serpentine
+30-breB,49,36,36,S. breweri,Turtle Rock,bre,B,0.26,0,serpentine
+37-breB,57,38,38,S. breweri,Turtle Rock,bre,B,0.08,0.9,serpentine
+46-breB,77,37,37,S. breweri,Turtle Rock,bre,B,0.09,0.1,serpentine
+54-breD,123,38,38,S. breweri,Turtle Rock,bre,D,0.26,0.2,serpentine
+63-breD,138,37,37,S. breweri,Turtle Rock,bre,D,0.17,2.8,serpentine
+68-breD,147,36,36,S. breweri,Turtle Rock,bre,D,0.12,1,serpentine
+7-breF,12,40,40,S. breweri,Turtle Rock,bre,F,0.2,0.4,serpentine
+14-craF,20,78,78,C. crassicaulis,Saline Valley Rd,cra,F,0.1,1.3,nonserpentine
+20-craF,28,80,80,C. crassicaulis,Saline Valley Rd,cra,F,0.2,5.1,nonserpentine
+32-craB,51,80,80,C. crassicaulis,Saline Valley Rd,cra,B,0.1,12.9,nonserpentine
+39-craB,61,78,78,C. crassicaulis,Saline Valley Rd,cra,B,0.05,1.4,nonserpentine
+44-craB,72,77,77,C. crassicaulis,Saline Valley Rd,cra,B,0.01,4.5,nonserpentine
+50-craD,87,76,76,C. crassicaulis,Saline Valley Rd,cra,D,0.25,4.6,nonserpentine
+52-craD,111,77,77,C. crassicaulis,Saline Valley Rd,cra,D,0.26,23.8,nonserpentine
+53-craD,113,78,78,C. crassicaulis,Saline Valley Rd,cra,D,0.25,14.5,nonserpentine
+9-craF,14,76,76,C. crassicaulis,Saline Valley Rd,cra,F,0.13,1.5,nonserpentine
+16-divF,22,18,18,S. diversifolius,Big Sandy,Div,F,0.1,2.9,nonserpentine
+38-divB,58,17,17,S. diversifolius,Big Sandy,Div,B,0.06,3.3,nonserpentine
+42-divB,68,18,18,S. diversifolius,Big Sandy,Div,B,0.19,1.1,nonserpentine
+48-divB,83,20,20,S. diversifolius,Big Sandy,Div,B,0.1,2.5,nonserpentine
+6-divF,11,20,20,S. diversifolius,Big Sandy,Div,F,0.18,3.4,nonserpentine
+60-divD,134,19,19,S. diversifolius,Big Sandy,Div,D,0.21,4.7,nonserpentine
+62-divD,136,16,88,S. diversifolius,Big Sandy,Div,D,0.26,2.4,nonserpentine
+67-divD,146,20,20,S. diversifolius,Big Sandy,Div,D,0.25,5,nonserpentine
+8-divF,13,16,88,S. diversifolius,Big Sandy,Div,F,0.19,1.1,nonserpentine
+17-farF,23,12,12,S. farnsworthianus,Peterson Rd,Far,F,0.01,12.2,nonserpentine
+18-farF,24,13,85,S. farnsworthianus,Peterson Rd,Far,F,0.13,1.6,nonserpentine
+21-farF,30,14,86,S. farnsworthianus,Peterson Rd,Far,F,0.09,2.6,nonserpentine
+25-farB,43,11,84,S. farnsworthianus,Peterson Rd,Far,B,0.25,4.5,nonserpentine
+43-farB,70,14,86,S. farnsworthianus,Peterson Rd,Far,B,0.02,2.7,nonserpentine
+45-farB,74,15,87,S. farnsworthianus,Peterson Rd,Far,B,0.01,2.4,nonserpentine
+51-farD,97,14,86,S. farnsworthianus,Peterson Rd,Far,D,0.12,7.2,nonserpentine
+57-farD,128,12,12,S. farnsworthianus,Peterson Rd,Far,D,0.15,7.3,nonserpentine
+59-farD,133,15,87,S. farnsworthianus,Peterson Rd,Far,D,0.17,6.8,nonserpentine
+1-hesF,1,43,100,S. hesperidis,Quary View-McL,hes,F,0.09,3.3,serpentine
+11-hesF,16,42,42,S. hesperidis,Quary View-McL,hes,F,0.09,0.8,serpentine
+4-hesF,7,41,41,S. hesperidis,Quary View-McL,hes,F,0.02,1.6,serpentine
+40-hesB,62,41,41,S. hesperidis,Quary View-McL,hes,B,0.14,16.6,serpentine
+41-hesB,66,44,42,S. hesperidis,Quary View-McL,hes,B,0.01,0,serpentine
+47-hesD,82,42,42,S. hesperidis,Quary View-McL,hes,D,0.25,2.8,serpentine
+49-hesB,84,43,100,S. hesperidis,Quary View-McL,hes,B,0.16,-0.4,serpentine
+61-hesD,135,44,44,S. hesperidis,Quary View-McL,hes,D,0.14,1.4,serpentine
+66-hesD,143,41,41,S. hesperidis,Quary View-McL,hes,D,0.15,0.5,serpentine
+13-polF,18,23,23,S. polygaloides,Washington Rd,Pol,F,0.01,0.5,serpentine
+15-polF,21,22,22,S. polygaloides,Washington Rd,Pol,F,0.06,0.9,serpentine
+27-polB,46,24,24,S. polygaloides,Washington Rd,Pol,B,0.21,2.9,serpentine
+29-polB,48,25,89,S. polygaloides,Washington Rd,Pol,B,0.27,1.6,serpentine
+31-polB,50,22,22,S. polygaloides,Washington Rd,Pol,B,0.12,1.5,serpentine
+5-polF,10,24,24,S. polygaloides,Washington Rd,Pol,F,0.03,0.4,serpentine
+55-polD,126,24,24,S. polygaloides,Washington Rd,Pol,D,0.25,0.1,serpentine
+58-polD,132,23,23,S. polygaloides,Washington Rd,Pol,D,0.26,0.3,serpentine
+64-polD,139,22,22,S. polygaloides,Washington Rd,Pol,D,0.26,0.6,serpentine
+12-towF,17,9,9,S. tortuosus,Washington Rd,ToW,F,0.25,3.1,serpentine
+19-towF,25,8,8,S. tortuosus,Washington Rd,ToW,F,0.23,0.5,serpentine
+24-towF,38,6,6,S. tortuosus,Washington Rd,ToW,F,0.27,3.2,serpentine
+34-towB,54,10,10,S. tortuosus,Washington Rd,ToW,B,0.07,3.9,serpentine
+35-towB,55,8,8,S. tortuosus,Washington Rd,ToW,B,0.06,8.8,serpentine
+36-towB,56,9,9,S. tortuosus,Washington Rd,ToW,B,0.24,6.2,serpentine
+69-towD,150,9,9,S. tortuosus,Washington Rd,ToW,D,0.2,2.5,serpentine
+70-towD,151,6,6,S. tortuosus,Washington Rd,ToW,D,0.2,1.2,serpentine
+71-towD,152,10,10,S. tortuosus,Washington Rd,ToW,D,0.25,2.3,serpentine
