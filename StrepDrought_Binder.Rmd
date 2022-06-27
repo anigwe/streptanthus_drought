@@ -1,0 +1,435 @@
+---
+title: "StrepDrought_Binder"
+author: "Alexandria igwe"
+date: "6/26/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Setup
+##Load libraries
+```{r load libraries, include=FALSE}
+library(ggplot2)
+library(viridis) #for ggplot2 colors
+#library(vegan)
+library(dplyr)
+library(lme4)
+library(scales)
+library(gridExtra)
+#library(reshape2)
+library(phyloseq)
+library(ecodist) #distance
+library(adephylo) #distTips
+#library(microbiome)
+library(DESeq2)
+library(ggplot2)
+library(vegan)
+library(randomForest)
+library(ape)
+library(gdm)
+#library(PVR) #version 0.3
+#library(picante)
+library(ggpubr)
+#library(pairwiseAdonis)
+#library(devtools)  # Load the devtools package
+#install_github("umerijaz/microbiomeSeq")  # Install the package
+#library(microbiomeSeq)  #load the package
+```
+##Import data
+```{r import data, include=FALSE}
+otu <-readRDS ("~/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_otu_dada.rds")
+tax <-readRDS("~/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_silva.rds")
+fitGTR <- readRDS("~/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_tree.RDS")
+metadata <- read.csv("/Users/anigwe/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_metadata.csv", row.names = 1)
+strep_tree <- read.tree("/Users/anigwe/Desktop/R/streptanthus/Strep_phylo_for_Allie.tr")
+strep_nexus <- read.nexus("/Users/anigwe/Desktop/R/streptanthus/reduced_strep_trees.nex")
+```
+```{r convert factors}
+str(metadata)
+metadata$ID <- as.factor(metadata$ID)
+metadata$family_pl <- as.factor(metadata$family_pl)
+metadata$rainfall_low <- as.numeric(metadata$rainfall_low)
+metadata$rainfall_high <- as.numeric(metadata$rainfall_high)
+str(metadata)
+```
+##Creating a phyloseq object
+```{r otu table, include=FALSE}
+#creating OTU table
+OTU = otu_table(otu, taxa_are_rows=FALSE)
+```
+```{r tax table, include=FALSE}
+#creating TAX table
+TAX = tax_table(tax)
+```
+```{r}
+#check to see if taxa names in otu and tax table are identical. output should be [1] TRUE
+identical(taxa_names(TAX),taxa_names(OTU))
+```
+```{r phy tree}
+TREE = phy_tree(fitGTR$tree)
+```
+```{r phyloseq object, include=FALSE}
+ps = phyloseq(OTU, sample_data(metadata), TAX, TREE)
+ps
+dim(otu_table(ps)) #for number of ASVs assigned with SUM of reads per sample
+```
+```{r change column names, include=FALSE}
+#http://deneflab.github.io/MicrobeMiseq/demos/mothur_2_phyloseq.html
+colnames(tax_table(ps))
+#colnames(tax_table(ps)) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+```
+##Remove mitochondria and chloroplast
+```{r remove mitochondria, include=FALSE}
+strep <- ps %>%
+  subset_taxa(
+    Kingdom == "Bacteria" &
+    Family  != "Mitochondria" &
+    Class   != "Chloroplast"
+  )
+
+strep
+strep <- subset_samples(strep,sample_sums(strep)>1000)
+dim(otu_table(strep)) #for number of ASVs assigned with SUM of reads per sample; [1] samples ASVs
+```
+##Change taxa names to 'Seq#'
+```{r}
+taxa_names(strep) <- paste0("Seq", seq(ntaxa(strep)))
+strep
+```
+##Normalize Data
+```{r}
+strep_prop <- transform_sample_counts(strep, function(x) x/sum(x))
+strep_prop <- subset_taxa(strep_prop,taxa_sums(strep_prop)>0)
+strep_prop
+dim(otu_table(strep_prop)) #for number of ASVs assigned with SUM of reads per sample
+#72 samples 10554 ASVs after removing low-abundance samples and non-target ASVs
+#2,560,279 reads after quality control (input->filtered->denoised->merged->tabled->nonchim) 
+```
+##Subset Data - B,D,F
+```{r, include=FALSE}
+strep.B<- strep %>%
+  subset_samples(
+    trt == "B"
+    )
+strep.B
+
+strep.B_prop<- strep_prop %>%
+  subset_samples(
+    trt == "B"
+    )
+strep.B_prop
+```
+```{r, include=FALSE}
+strep.D<- strep %>%
+  subset_samples(
+    trt == "D"
+    )
+strep.D
+
+strep.D_prop<- strep_prop %>%
+  subset_samples(
+    trt == "B"
+    )
+strep.D_prop
+```
+```{r, include=FALSE}
+strep.F<- strep %>%
+  subset_samples(
+    trt == "F"
+    )
+strep.F
+
+strep.F_prop<- strep_prop %>%
+  subset_samples(
+    trt == "B"
+    )
+strep.F_prop
+```
+##Set treatment names
+```{r}
+trt_names <- c(
+                    `B` = "Low",
+                    `D` = "Med",
+                    `F` = "High"
+                    )
+affinity_names <- c(nonserpentine="Nonserpentine", serpentine="Serpentine")
+spcode_names <- c(
+  cra ='C. crassicaulis',
+  Div ='S. diversifolius',
+  Far ='S. farnsworthianus',
+  ToW ='S. tortuosus',
+  ama = 'C. amplexicaulis amplex',
+  bre = 'S. breweri',
+  hes ='S. hesperidis',
+  Pol = 'S. polygaloides')
+
+spcode_names_lc <- c(
+  cra ='C. crassicaulis',
+  div ='S. diversifolius',
+  far ='S. farnsworthianus',
+  ToW  ='S. tortuosus',
+  ama = 'C. amplexicaulis amplex',
+  bre = 'S. breweri',
+  hes ='S. hesperidis',
+  pol = 'S. polygaloides')
+```
+
+#Microbial Community Analysis
+##Rarefaction curve
+```{r, include=TRUE}
+#rarefaction curve practice: http://www.fromthebottomoftheheap.net/2015/04/16/drawing-rarefaction-curves-with-custom-colours/
+#below: plot rarefaction curve to check before rarefying
+strepdrought.otu <- as(otu_table(ps), "matrix")
+Rarecurve <- rarecurve((strepdrought.otu), step = 50, xlab = "Reads", ylab = "Amplicon Sequence Variants (ASV)", label = TRUE)
+```
+##Figure 1 - relative abundance and alpha diversity
+###relative abundance
+```{r}
+#wrangle data
+strep_phylum <- strep_prop %>%
+  tax_glom(taxrank = "Phylum") %>%                     # agglomerate at phylum level
+  #transform_sample_counts(function(x) {x/sum(x)} ) %>% # Transform to rel. abundance
+  psmelt() %>%                                         # Melt to long format
+  filter(Abundance > 0.02) %>%                         # Filter out low abundance taxa
+  arrange(Phylum)
+#strep_phylum
+```
+```{r}
+#add species names to phyloseq
+strep_phylum$species
+strep_phylum$species = factor(strep_phylum$species, levels=c('C. crassicaulis','S. diversifolius','S. farnsworthianus','S. tortuosus', 'C. amplexicaulis amplex', 'S. breweri', 'S. hesperidis', 'S. polygaloides'))
+
+sample_data(strep)$species
+sample_data(strep)$species = factor(sample_data(strep)$species, levels=c('C. crassicaulis','S. diversifolius','S. farnsworthianus','S. tortuosus', 'C. amplexicaulis amplex', 'S. breweri', 'S. hesperidis', 'S. polygaloides'))
+```
+```{r}
+#abundance table
+sd_phylum <- strep_phylum %>% group_by(trt,affinity,species,Phylum) %>% dplyr::summarise(mean(Abundance, na.rm = TRUE))
+colnames(sd_phylum)<-c("Treatment","Affinity","Species","Phylum","mean")
+sd_phylum
+```
+```{r}
+#library(lme4)
+lbs.lmer.affinity <- lm(Abundance~affinity+species, data=strep_phylum, na.action = na.exclude)
+summary(lbs.lmer.affinity)
+
+#analysis of variance with abundance as the dependent variable and treatment and species as the the independent variables in a two-way factorial design.
+strep.aov.affinity <- aov(Abundance~affinity+species, data=strep_phylum, na.action = na.exclude)
+summary(strep.aov.affinity)
+
+#No significant difference between the abundance of microbial communities between plant species or soil affinity 
+
+#lsmeans(lbs.lmer.affinity, pairwise~affinity, adjust="tukey")
+#lsmeans(lbs.lmer.affinity, pairwise~affinity*species, adjust="tukey")
+```
+```{r}
+strep_phylum_bar<-ggplot(strep_phylum, aes(x = trt, y = Abundance, fill = Phylum)) + theme_bw() +
+  facet_wrap(affinity~species, ncol=4, labeller=labeller(affinity = affinity_names)) +
+  geom_bar(stat="identity", position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_discrete(breaks=c("B", "D", "F"),
+                      labels=c("Low", "Med", "High")) +
+  scale_fill_brewer(palette="Spectral") +
+  theme(text = element_text(size=10), legend.position="bottom", strip.text.x = element_text(face = "italic")) +
+  #labs(title="Relative Abundances") +
+  ylab ("Relateve Abundance (Phyla > 2%)") +
+  xlab ("Water Treatment") +
+  theme(strip.text = element_text(face = "bold")) +
+#, axis.text.x = element_text(angle=0, vjust=0.5, size=14)) +
+  guides(fill=guide_legend(legend.position="bottom", nrow=4))
+strep_phylum_bar
+#ggsave("/Users/anigwe/Desktop/strep_figures/figure2.tiff", height=300, width=300, units='mm', dpi=200)
+```
+###alpha diversity
+```{r plot richness}
+#Used strep instead of strep_prop to remove untrimmed data error
+richness_plot_shannon <- plot_richness(strep, x="trt", measures=c("Shannon")) + theme_bw() + geom_boxplot() +
+  facet_wrap(affinity~species,ncol=4, scales="free", labeller=labeller(affinity = affinity_names)) +
+  #theme(axis.text.x= element_text(face="italic",angle=90, hjust=0.5, vjust=0.5), axis.title.x=element_blank()) +  
+  scale_x_discrete(name="Water Treatment",
+                         breaks=c("B", "D", "F"),
+                         labels=c("Low", "Med", "High")) +
+  labs(title="Alpha Diversity Index: Shannon") 
+richness_plot_shannon
+#ggsave("/Users/anigwe/Desktop/strep_figures/richness.species.box.tiff", height=180, width=228, units='mm', dpi=200)
+
+#table of richness
+richness <- estimate_richness(strep, measures=c("Shannon"))
+richness$Shannon
+richness$ID <- row.names(richness)
+View(richness)
+strep.df <- as(sample_data(strep), "data.frame")
+strep.df$ID <- row.names(strep.df)
+strep.df.richness <- merge(strep.df,richness,by="ID")
+row.names(strep.df.richness)<-strep.df.richness$ID
+
+#abundance table
+sd_richness <- strep.df.richness %>% group_by(trt,affinity,species) %>% dplyr::summarise(mean(Shannon, na.rm = TRUE))
+colnames(sd_richness)<-c("Treatment","Affinity","Species","Phylum","mean")
+sd_richness
+
+#statistical analysis of shannon
+#testing model with affinity as random effect
+fit.shannon <- lm(estimate_richness(strep)$Shannon ~ trt*species+affinity, data=as(sample_data(strep), "data.frame"))
+plot(fit.shannon)
+summary(aov(fit.shannon))
+TukeyHSD(aov(fit.shannon))
+```
+```{r}
+richness_plot_shannon <- plot_richness(strep, x="trt", measures=c("Shannon")) + theme_bw() + geom_boxplot() +
+  facet_wrap(affinity~species,ncol=4, scales="free", labeller=labeller(affinity = affinity_names)) +
+  theme(strip.text.x = element_text(face = "italic")) +
+  scale_x_discrete(name="Water Treatment",
+                         breaks=c("B", "D", "F"),
+                         labels=c("Low", "Med", "High"))
+
+richness_plot_shannon$layers <- richness_plot_shannon$layers[-1]
+richness_plot_shannon
+```
+###Figure 1
+```{r}
+#FIGURE 1
+abundance_richness<-ggarrange(strep_phylum_bar,richness_plot_shannon, labels="auto", nrow=1)
+abundance_richness
+#ggsave("/Users/anigwe/Desktop/strep_figures/figure1.tiff", height=180, width=350, units='mm', dpi=200)
+```
+##Figure 2 - DESeq2 - genus
+```{r}
+#{r fig.height = 220, fig.width = 50, fig.align = "center"}
+set.seed(711)
+packageVersion("DESeq2")
+
+strep_genus<-tax_glom(strep, "Genus")
+
+diagdds.genus = phyloseq_to_deseq2(strep_genus, ~trt)
+
+gm_mean.genus = function(x, na.rm=TRUE){ exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))}
+geoMeans.genus = apply(counts(diagdds.genus), 1, gm_mean.genus)
+diagdds.genus = estimateSizeFactors(diagdds.genus, geoMeans = geoMeans.genus)
+
+diagdds.genus = DESeq(diagdds.genus, betaPrior = FALSE, test="Wald", fitType="parametric")
+
+# If "Error in `rownames<-`(`*tmp*`, value = c("sp1", "sp0")) : length of 'dimnames' [1] not equal to array extent" appears, increase alpha to .90 to determine if there is a lack of differential OTUs at alpha = 0.01 or if there is a problem with the code.
+res.genus = results(diagdds.genus, cooksCutoff = FALSE)
+alpha.genus = 0.01
+sigtab.genus = res.genus[which(res.genus$padj < alpha.genus), ]
+sigtab.genus = cbind(as(sigtab.genus, "data.frame"), as(tax_table(strep)[rownames(sigtab.genus), ], "matrix"))
+sigtab.genus = as.data.frame(sigtab.genus)
+head(sigtab.genus)
+
+subset.genus <- subset_taxa(strep, taxa_names(strep)%in%rownames(sigtab.genus))
+plot_bar(subset.genus)
+dat.genus <- psmelt(subset.genus) # create data frame
+dat.genus$LogAbund <- log10(dat.genus$Abundance)
+```
+```{r}
+#abundance table - genus
+str(dat.genus)
+dat_genus <- dat.genus %>% group_by(trt,Phylum,Genus) %>%
+  dplyr::summarise(
+  n=sum(!is.na(Abundance)),
+  sd(Abundance , na.rm = TRUE),
+  mean(Abundance , na.rm = TRUE),
+  min(Abundance , na.rm = TRUE),
+  max(Abundance , na.rm = TRUE),
+  var(Abundance , na.rm = TRUE),
+  se = sd(Abundance, na.rm=T)/sqrt(sum(!is.na(Abundance))))
+colnames(dat_genus)<-c("trt","Phylum","Genus","n","sd","mean","min","max","var","se")
+dat_genus
+
+dat_genus.plot<-ggplot(data=dat_genus, aes(x=trt, y=mean, fill=Phylum)) + theme_bw() +
+  geom_bar(stat="identity", position="dodge") +
+geom_errorbar(aes(x=trt, ymin=mean-se, ymax=mean+se),position="dodge", colour="black") +
+  facet_wrap(~Genus, scales="free_y") +
+  scale_x_discrete(breaks=c("B", "D", "F"),
+                      labels=c("Low", "Med", "High")) +
+  scale_fill_brewer(palette="Spectral") +
+  theme(text = element_text(size=10), legend.position="bottom",
+        strip.text.x = element_text(face = "italic"),
+        axis.text.x = element_text(angle = 90)) +
+  xlab("Water Treatment") +
+  ylab("Average Read Abundance")
+dat_genus.plot
+```
+##Figure 3 - PCoA
+```{r}
+#ordination
+ord.nmds.bray <- ordinate(strep_prop, method="NMDS", distance="bray")
+ord.nmds.bray
+summary(ord.nmds.bray)
+
+ord.pcoa.bray <- ordinate(strep_prop, method="PCoA", distance="bray")
+ord.pcoa.bray
+summary(ord.pcoa.bray)
+
+#visualization of relationship
+trt.ord <- plot_ordination(strep_prop, ord.pcoa.bray, color="species") +
+  facet_wrap(~trt, labeller=labeller(trt = trt_names)) +
+  theme_bw() + theme(text = element_text(size=12)) + geom_point(size=5) +
+  theme(legend.text = element_text(size = 10)) +
+  scale_color_discrete(name="Species") +
+  scale_shape_discrete(name="Water Treatment",
+                         breaks=c("B", "D", "F"),
+                         labels=c("Low", "Med", "High")) +
+  #labs(title="PCoA of Bray-Curtis Dissimilarity") +
+  theme(strip.text = element_text(face = "bold"))
+trt.ord
+
+
+sample_data(strep_prop)$species_trt <- paste(sample_data(strep_prop)$species, 
+                                        sample_data(strep_prop)$trt)
+
+#stats bray
+strep.bray <- phyloseq::distance(strep_prop, method="bray")
+sampledf.strep <- data.frame(sample_data(strep_prop))
+adonis.strep.bray <- adonis(strep.bray ~ trt*affinity, data = sampledf.strep)
+adonis.strep.bray
+
+#betadisper trt
+beta.strep.bray.trt <- betadisper(strep.bray, sampledf.strep$trt, type="centroid")
+permutest(beta.strep.bray.trt)
+beta.strep.bray.trt$centroids
+
+plot(beta.strep.bray.trt)
+TukeyHSD(beta.strep.bray.trt)
+
+#betadisper species
+#no significant difference
+beta.strep.bray.species <- betadisper(strep.bray, sampledf.strep$species, type="centroid")
+permutest(beta.strep.bray.species)
+                 
+plot(beta.strep.bray.species)
+TukeyHSD(beta.strep.bray.species)
+
+#betadisper species/trt
+#no significant difference
+beta.strep.bray.species_trt <- betadisper(strep.bray, sampledf.strep$species_trt, type="centroid")
+permutest(beta.strep.bray.species_trt)
+                 
+plot(beta.strep.bray.species_trt)
+TukeyHSD(beta.strep.bray.species_trt)
+
+beta.strep.bray.species_trt$centroids
+beta.strep.bray.species_trt$distances
+beta.strep.bray.species_trt$vectors
+
+boxplot(beta.strep.bray.trt$distances ~ beta.strep.bray.trt$group)
+```
+```{r}
+trt.ord <- plot_ordination(strep_prop, ord.pcoa.bray, color="trt") +
+  facet_wrap(~species) +
+  theme_bw() + theme(text = element_text(size=12)) + geom_point(size=5) +
+  theme(legend.text = element_text(size = 10)) +
+  scale_color_discrete(name="Water\nTreatment",
+                         breaks=c("B", "D", "F"),
+                         labels=c("Low", "Med", "High")) +
+  theme(strip.text = element_text(face = "bold"))
+trt.ord
+```
+#System and session info
+```{r}
+Sys.info()
+sessionInfo()
+```
