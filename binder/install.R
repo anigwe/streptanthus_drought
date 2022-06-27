@@ -8,6 +8,11 @@ pkgs = c(
 "DESeq2",
 "car",
 "emmeans",
-"viridis")
+"viridis",
+'adephylo',
+'ape',
+'ecodist',
+'gdm',
+'randomForest')
 ncores = parallel::detectCores()
 install.packages(pkgs, Ncpus = ncores)
