@@ -11,31 +11,21 @@ knitr::opts_chunk$set(echo = TRUE)
 #Setup
 ##Load libraries
 ```{r load libraries, include=FALSE}
-library(ggplot2)
-library(viridis) #for ggplot2 colors
-#library(vegan)
-library(dplyr)
-library(lme4)
-library(scales)
-library(gridExtra)
-#library(reshape2)
 library(phyloseq)
-library(ecodist) #distance
-library(adephylo) #distTips
-#library(microbiome)
-library(DESeq2)
-library(ggplot2)
-library(vegan)
-library(randomForest)
-library(ape)
-library(gdm)
-#library(PVR) #version 0.3
-#library(picante)
+library(dplyr)
 library(ggpubr)
-#library(pairwiseAdonis)
-#library(devtools)  # Load the devtools package
-#install_github("umerijaz/microbiomeSeq")  # Install the package
-#library(microbiomeSeq)  #load the package
+library(vegan)
+library(ggplot2)
+library(lme4)
+library(DESeq2)
+library(car)
+library(emmeans)
+library(viridis)
+library(adephylo)
+library(ape)
+library(ecodist)
+library(gdm)
+library(randomForest)
 ```
 ##Import data
 ```{r import data, include=FALSE}
