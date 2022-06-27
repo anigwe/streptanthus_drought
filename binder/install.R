@@ -9,10 +9,10 @@ pkgs = c(
 "car",
 "emmeans",
 "viridis",
-'adephylo',
-'ape',
-'ecodist',
-'gdm',
-'randomForest')
+"adephylo",
+"ape",
+"ecodist",
+"gdm",
+"randomForest")
 ncores = parallel::detectCores()
 install.packages(pkgs, Ncpus = ncores)
