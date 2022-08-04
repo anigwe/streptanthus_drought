@@ -11,28 +11,41 @@ knitr::opts_chunk$set(echo = TRUE)
 #Setup
 ##Load libraries
 ```{r load libraries, include=FALSE}
+library(ape) #import nexus trees
 library(phyloseq)
 library(dplyr)
-library(ggpubr)
 library(vegan)
+library(adephylo) #distTips
 library(ggplot2)
-library(lme4)
+library(viridis) #for ggplot2 colors
 library(DESeq2)
+library(lme4)
 library(car)
 library(emmeans)
-library(viridis)
-library(adephylo)
-library(ape)
-library(ecodist)
-library(gdm)
-library(randomForest)
+
+
+
+#library(scales)
+#library(gridExtra)
+#library(reshape2)
+#library(ecodist) #distance
+#library(microbiome)
+#library(randomForest)
+#library(gdm)
+#library(PVR) #version 0.3
+#library(picante)
+#library(ggpubr)
+#library(pairwiseAdonis)
+#library(devtools)  # Load the devtools package
+#install_github("umerijaz/microbiomeSeq")  # Install the package
+#library(microbiomeSeq)  #load the package
 ```
 ##Import data
 ```{r import data, include=FALSE}
 otu <-readRDS ("~/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_otu_dada.rds")
 tax <-readRDS("~/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_silva.rds")
 fitGTR <- readRDS("~/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_tree.RDS")
-metadata <- read.csv("/Users/anigwe/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_metadata.csv", row.names = 1)
+metadata <- read.csv("/Users/anigwe/Desktop/R/streptanthus/amplicon_analysis/phyloseq/input/strepdrought_metadata copy.csv", row.names = 1)
 strep_tree <- read.tree("/Users/anigwe/Desktop/R/streptanthus/Strep_phylo_for_Allie.tr")
 strep_nexus <- read.nexus("/Users/anigwe/Desktop/R/streptanthus/reduced_strep_trees.nex")
 ```
@@ -145,6 +158,7 @@ trt_names <- c(
                     `F` = "High"
                     )
 affinity_names <- c(nonserpentine="Nonserpentine", serpentine="Serpentine")
+
 spcode_names <- c(
   cra ='C. crassicaulis',
   Div ='S. diversifolius',
@@ -165,7 +179,6 @@ spcode_names_lc <- c(
   hes ='S. hesperidis',
   pol = 'S. polygaloides')
 ```
-
 #Microbial Community Analysis
 ##Rarefaction curve
 ```{r, include=TRUE}
@@ -343,6 +356,65 @@ geom_errorbar(aes(x=trt, ymin=mean-se, ymax=mean+se),position="dodge", colour="b
   ylab("Average Read Abundance")
 dat_genus.plot
 ```
+##Figure SF1 - DESeq2 - genus - trt.spcode - supplement
+```{r}
+#{r fig.height = 220, fig.width = 50, fig.align = "center"}
+set.seed(711)
+packageVersion("DESeq2")
+
+strep_genus<-tax_glom(strep, "Genus")
+
+diagdds.genus.trt.spcode = phyloseq_to_deseq2(strep_genus, ~trt*spcode)
+
+gm_mean.genus.trt.spcode = function(x, na.rm=TRUE){ exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))}
+geoMeans.genus.trt.spcode = apply(counts(diagdds.genus.trt.spcode), 1, gm_mean.genus.trt.spcode)
+diagdds.genus.trt.spcode = estimateSizeFactors(diagdds.genus.trt.spcode, geoMeans = geoMeans.genus.trt.spcode)
+
+diagdds.genus.trt.spcode = DESeq(diagdds.genus.trt.spcode, betaPrior = FALSE, test="Wald", fitType="parametric")
+
+# If "Error in `rownames<-`(`*tmp*`, value = c("sp1", "sp0")) : length of 'dimnames' [1] not equal to array extent" appears, increase alpha to .90 to determine if there is a lack of differential OTUs at alpha = 0.01 or if there is a problem with the code.
+res.genus.trt.spcode = results(diagdds.genus.trt.spcode, cooksCutoff = FALSE)
+alpha.genus.trt.spcode = 0.01
+sigtab.genus.trt.spcode = res.genus.trt.spcode[which(res.genus.trt.spcode$padj < alpha.genus.trt.spcode), ]
+sigtab.genus.trt.spcode = cbind(as(sigtab.genus.trt.spcode, "data.frame"), as(tax_table(strep)[rownames(sigtab.genus.trt.spcode), ], "matrix"))
+sigtab.genus.trt.spcode = as.data.frame(sigtab.genus.trt.spcode)
+head(sigtab.genus.trt.spcode)
+
+subset.genus.trt.spcode <- subset_taxa(strep, taxa_names(strep)%in%rownames(sigtab.genus.trt.spcode))
+plot_bar(subset.genus.trt.spcode)
+dat.genus.trt.spcode <- psmelt(subset.genus.trt.spcode) # create data frame
+dat.genus.trt.spcode$LogAbund <- log10(dat.genus.trt.spcode$Abundance)
+```
+```{r}
+#abundance table - genus.trt.spcode
+str(dat.genus.trt.spcode)
+dat_genus.trt.spcode <- dat.genus.trt.spcode %>% group_by(trt,spcode,Phylum,Genus) %>%
+  dplyr::summarise(
+  n=sum(!is.na(Abundance)),
+  sd(Abundance , na.rm = TRUE),
+  mean(Abundance , na.rm = TRUE),
+  min(Abundance , na.rm = TRUE),
+  max(Abundance , na.rm = TRUE),
+  var(Abundance , na.rm = TRUE),
+  se = sd(Abundance, na.rm=T)/sqrt(sum(!is.na(Abundance))))
+colnames(dat_genus.trt.spcode)<-c("trt","spcode","Phylum","Genus","n","sd","mean","min","max","var","se")
+dat_genus.trt.spcode
+
+dat_genus.trt.spcode.plot<-ggplot(data=dat_genus.trt.spcode, aes(x=trt, y=mean, fill=Phylum)) + theme_bw() +
+  geom_bar(stat="identity", position="dodge") +
+geom_errorbar(aes(x=trt, ymin=mean-se, ymax=mean+se),position="dodge", colour="black") +
+  facet_grid(Genus~spcode, scales="free_y", labeller=labeller(spcode = spcode_names, label_wrap_gen(width = 2))) +
+  scale_x_discrete(breaks=c("B", "D", "F"),
+                      labels=c("Low", "Med", "High")) +
+  scale_fill_brewer(palette="Spectral") +
+  theme(text = element_text(size=14), legend.position="bottom",
+        strip.text.x = element_text(face = "italic"),
+        axis.text.x = element_text(angle = 90)) +
+  xlab("Water Treatment") +
+  ylab("Average Read Abundance")
+dat_genus.trt.spcode.plot
+#ggsave("/Users/anigwe/Desktop/strep_figures/v4/SF1.tiff", height=180, width=350, units='mm', dpi=200)
+```
 ##Figure 3 - PCoA
 ```{r}
 #ordination
@@ -417,6 +489,285 @@ trt.ord <- plot_ordination(strep_prop, ord.pcoa.bray, color="trt") +
                          labels=c("Low", "Med", "High")) +
   theme(strip.text = element_text(face = "bold"))
 trt.ord
+```
+##Figure SF2 - compositional variance of Phyla 
+```{r}
+#aggregate by phylum
+strep_phylum_ps = tax_glom(strep_prop, "Phylum")
+#merge samples by treatment and species
+strep_phylum_ps = merge_samples(strep_phylum_ps, "spcode_trt")
+strep_phylum_ps
+strep_phylum_tt <- as(tax_table(strep_phylum_ps),"matrix")
+strep_phylum_tt <- as.data.frame(strep_phylum_tt)
+# Extract abundance matrix from the phyloseq object
+strep_phylum_ps_OTU1 = as(otu_table(strep_phylum_ps), "matrix")
+row.names(strep_phylum_ps_OTU1)
+colnames(strep_phylum_ps_OTU1) <- strep_phylum_tt$Phylum
+strep_phylum_ps_OTU1 <- as.data.frame(strep_phylum_ps_OTU1)
+strep_prop_ps.meta<-as(sample_data(strep_prop),"data.frame")
+
+
+
+#add trt and species as columns
+strep_phylum_ps_OTU1$trt <- strep_prop_ps.meta$trt
+strep_phylum_ps_OTU1$spcode <- strep_prop_ps.meta$spcode
+
+
+strep_phylum_ps_OTU1 <- strep_phylum_ps_OTU1 %>%
+  mutate(trt = case_when(
+    endsWith(row.names(strep_phylum_ps_OTU1), "B") ~ "B",
+    endsWith(row.names(strep_phylum_ps_OTU1), "D") ~ "D",
+    endsWith(row.names(strep_phylum_ps_OTU1), "F") ~ "F"
+    ))
+
+strep_phylum_ps_OTU1 <- strep_phylum_ps_OTU1 %>%
+  mutate(spcode = case_when(
+    str_detect(row.names(strep_phylum_ps_OTU1), "ama") ~ "ama",
+    str_detect(row.names(strep_phylum_ps_OTU1), "bre") ~ "bre",
+    str_detect(row.names(strep_phylum_ps_OTU1), "cra") ~ "cra",
+    str_detect(row.names(strep_phylum_ps_OTU1), "Div") ~ "Div",
+    str_detect(row.names(strep_phylum_ps_OTU1), "Far") ~ "Far",
+    str_detect(row.names(strep_phylum_ps_OTU1), "hes") ~ "hes",
+    str_detect(row.names(strep_phylum_ps_OTU1), "Pol") ~ "Pol",
+    str_detect(row.names(strep_phylum_ps_OTU1), "ToW") ~ "ToW"
+    ))
+
+strep_phylum_ps_OTU1 <- strep_phylum_ps_OTU1 %>%
+  mutate(affinity = case_when(
+    startsWith(row.names(strep_phylum_ps_OTU1), "ama") ~ "nonserpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "bre") ~ "serpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "cra") ~ "nonserpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Div") ~ "nonserpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Far") ~ "nonserpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "hes") ~ "serpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Pol") ~ "serpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "ToW") ~ "serpentine"
+    ))
+
+strep_phylum_ps_OTU1
+ncol(strep_phylum_ps_OTU1) #22
+
+strep_phylum_ps_OTU2 <- t(strep_phylum_ps_OTU1)
+row.names(strep_phylum_ps_OTU2)
+# transpose if necessary
+if(taxa_are_rows(strep_phylum_ps)){strep_phylum_ps_OTU1 <- t(strep_phylum_ps_OTU1)}
+# Coerce to data.frame
+strep_phylum_ps_OTUdf = as.data.frame(strep_phylum_ps_OTU1)
+strep_phylum_ps_tOTUdf = as.data.frame(strep_phylum_ps_OTU2)
+
+strep_META1 = as(sample_data(metadata), "matrix")
+#strep_META1$trt.spcode <- paste()
+strep_METAdf = as.data.frame(strep_META1)
+
+strep_METAdf$new.names <- with(strep_METAdf, paste0(row.names(strep_METAdf),"-",spcode,"-", trt))
+
+strep_METAdf2 <- strep_METAdf
+row.names(strep_METAdf2) <- strep_METAdf$new.names
+strep_METAdf2$new.names<-as.factor(strep_METAdf2$new.names)
+strep_METAdf2$trt.spcode <- paste(strep_METAdf2$trt, strep_METAdf2$spcode)
+strep_METAdf2$trt.spcode<-as.factor(strep_METAdf2$trt.spcode)
+strep_METAdf2$rainfall_low <- as.numeric(as.character(strep_METAdf2$rainfall_low))
+strep_METAdf2$rainfall_high <- as.numeric(as.character(strep_METAdf2$rainfall_high))
+# Check columns classes
+class(strep_METAdf2$ID)
+ncol(strep_METAdf2) #14
+sapply(strep_METAdf2, class)
+strep_METAdf2[,9:13] <- sapply(strep_METAdf2[,9:13],as.numeric, na.rm=TRUE)
+row.names(strep_METAdf2)
+
+#ABUNDANCE TABLE
+strep_OTUdf2 <- strep_OTUdf
+row.names(strep_OTUdf2) <- strep_METAdf$new.names
+row.names(strep_OTUdf2)
+# Check columns classes
+class(strep_OTUdf2$Seq1)
+ncol(strep_OTUdf2) #10554
+sapply(strep_OTUdf2, class)
+strep_OTUdf2[,1:10554] <- sapply(strep_OTUdf2[,1:10554],as.numeric)
+sapply(strep_OTUdf2, class)
+abund_table<-strep_OTUdf2
+
+abund_table$trt.spcode<-strep_METAdf2$trt.spcode
+abund_table
+abund_table2 <- aggregate(.~trt.spcode, data = abund_table, FUN = mean)
+row.names(abund_table2)<-abund_table2$trt.spcode
+length(row.names(abund_table2))
+abund_table2$trt.spcode<-NULL
+```
+```{r}
+#https://www.statology.org/principal-components-analysis-in-r/
+#calculate principal components
+results <- prcomp(strep_phylum_ps_OTU1[,1:19], scale = TRUE)
+#reverse the signs
+results$rotation <- -1*results$rotation
+#display principal components
+results$rotation
+#reverse the signs of the scores
+results$x <- -1*results$x
+#display the first six scores
+head(results$x)
+#visualize results - biplot
+biplot(results, scale = 0)
+
+head(strep_phylum_ps_OTU1[order(-strep_phylum_ps_OTU1$Proteobacteria),])
+
+#calculate total variance explained by each principal component
+results$sdev^2 / sum(results$sdev^2)
+
+#calculate total variance explained by each principal component
+var_explained = results$sdev^2 / sum(results$sdev^2)
+
+
+#create scree plot
+qplot(c(1:19), var_explained) + 
+  geom_line() + 
+  xlab("Principal Component") + 
+  ylab("Variance Explained") +
+  ggtitle("Scree Plot") +
+  ylim(0, 1)
+
+library("ggbiplot")
+results <- prcomp(strep_phylum_ps_OTU1[,1:19], scale = TRUE)
+
+#add trt and species as columns
+results <- results %>%
+  mutate(trt = case_when(
+    endsWith(row.names(strep_phylum_ps_OTU1), "B") ~ "B",
+    endsWith(row.names(strep_phylum_ps_OTU1), "D") ~ "D",
+    endsWith(row.names(strep_phylum_ps_OTU1), "F") ~ "F"
+    ))
+
+results <- results %>%
+  mutate(spcode = case_when(
+    startsWith(row.names(strep_phylum_ps_OTU1), "ama") ~ "ama",
+    startsWith(row.names(strep_phylum_ps_OTU1), "bre") ~ "bre",
+    startsWith(row.names(strep_phylum_ps_OTU1), "cra") ~ "cra",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Div") ~ "Div",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Far") ~ "Far",
+    startsWith(row.names(strep_phylum_ps_OTU1), "hes") ~ "hes",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Pol") ~ "Pol",
+    startsWith(row.names(strep_phylum_ps_OTU1), "ToW") ~ "ToW"
+    ))
+
+results <- results %>%
+  mutate(affinity = case_when(
+    startsWith(row.names(strep_phylum_ps_OTU1), "ama") ~ "nonserpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "bre") ~ "serpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "cra") ~ "nonserpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Div") ~ "nonserpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Far") ~ "nonserpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "hes") ~ "serpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "Pol") ~ "serpentine",
+    startsWith(row.names(strep_phylum_ps_OTU1), "ToW") ~ "serpentine"
+    ))
+
+class(results$trt)
+results$trt<-(as.matrix(results$trt))
+results$spcode<-(as.matrix(results$spcode))
+results$affinity<-(as.matrix(results$affinity))
+results
+
+#https://programmer.group/sample-pca-scatter-grouped-ellipse-principal-component-abundance-and-correlation.html
+#results$rotation<-results$rotation[c("Proteobacteria","Firmicutes","Bacteroidetes","Actinobacteria","Acidobacteria","Gemmatimonadetes","Chloroflexi","Planctomycetes")]
+#library("ggrepel")
+#results$rotation<-results$rotation[c(1:6,10,11),]
+biplot <- 
+ggbiplot(results, obs.scale = 1, var.scale = 1, loading=TRUE) +
+  theme_bw() + 
+  geom_point(aes(shape=strep_phylum_ps_OTU1$trt, colour=strep_phylum_ps_OTU1$spcode), size=3) + xlim(c(-2.5, 4.5)) + ylim(c(-3, 1.5)) + 
+  scale_color_discrete(name="Species", label = spcode_names) +
+  scale_shape_discrete(name="Water\nTreatment", label=trt_names) + 
+  theme(text = element_text(size=16), legend.text = element_text(face = "italic"))
+
+biplot
+#ggsave("/Users/anigwe/Desktop/strep_figures/v4/SF2.tiff", height=180, width=350, units='mm', dpi=200)
+```
+#Phylogeny - Mantel
+```{r}
+species<-c("CRA","POL","DIV","TORW","FAR","AMA","HES","BRE")
+pruned.tree<-drop.tip(strep_tree,strep_tree$tip.label[-match(species, strep_tree$tip.label)])
+strep_pruned.tree <- pruned.tree
+plot(pruned.tree)
+
+#Calculate phylogenetic distance from tips
+phydist.tips <-  as.matrix(distTips(pruned.tree, method=c("sumDD")))
+row.names(phydist.tips)
+phydist.tips
+
+#Calculate phylogenetic distance from roots
+phydist.root <-  as.matrix(distRoot(pruned.tree, method=c("sumDD"))) #results added to 'sumDD' column in otu_table_t
+row.names(phydist.root)
+phydist.root
+```
+##examined using (partial) mantel tests and mutual clustering approaches
+```{r}
+#Does composition differ by trt? - STREP
+sampledf.phyman <- data.frame(sample_data(strep_prop))
+strep_prop_bray<-phyloseq::distance(strep_prop, "bray")
+strep_prop_wu<-phyloseq::distance(strep_prop, "wunifrac")
+strep_prop_jac<-phyloseq::distance(strep_prop, "jaccard")
+strep_prop_u<-phyloseq::distance(strep_prop, "unifrac")
+
+# Adonis test - site first, controlling for species
+adonis2(strep_prop_bray ~ regime+species, data = sampledf.phyman)  #sig
+adonis2(strep_prop_jac ~ regime+species, data = sampledf.phyman)  #sig
+adonis2(strep_prop_wu ~ regime+species, data = sampledf.phyman)  #sig, species not sig
+adonis2(strep_prop_u ~ regime+species, data = sampledf.phyman)  #sig
+
+# Adonis test - species first, controlling for site
+adonis2(strep_prop_bray ~ species+regime, data = sampledf.phyman)  #sig
+adonis2(strep_prop_jac ~ species+regime, data = sampledf.phyman)  #sig
+adonis2(strep_prop_wu ~ species+regime, data = sampledf.phyman)  #sig, species not sig
+adonis2(strep_prop_u ~ species+regime, data = sampledf.phyman)  #sig
+
+#########################
+#(partial) mantel tests at the individual, pop and species levels
+#create distance matrices
+#make microbiome distance matrix
+strep_prop_bray<-phyloseq::distance(strep_prop, "bray")  #use for full ASV set
+strep_prop_jac<-phyloseq::distance(strep_prop, "jaccard") #use for subset comparisons
+strep_bray_dm<-as.matrix(strep_prop_bray)   # options: psW_jac, bray
+dim(strep_bray_dm) #72*72
+strep_bray_dm2<-as.dist(strep_bray_dm)
+
+#make distance matrix for phylogeny
+#replace tip labels to march species names in other files
+#note that as of oct20, extra space after stephensi fixed
+strep_pruned.tree$tip.label<-c("cra","Pol","Div","ToW","Far","ama","hes","bre")
+D_evo<-cophenetic(strep_pruned.tree)
+#convert into long format, species1, species2, distance
+D_evo_long<-tidyr::gather(as.data.frame(D_evo), key="spcode", value= "distance")
+D_evo_long["spcode2"]<-c(rep(rownames(D_evo), 8)) #make extra column for compared to species
+D_evo_long <- D_evo_long[c(3,1,2)]  #reorder columns
+D_evo_long
+#for phylogeny make blank new matrix with dims and names matching the microbiome matrix
+evo.matrix <- matrix(0, nrow = length(sampledf.phyman$regime), ncol = length(sampledf.phyman$regime))
+row.names(evo.matrix) <- sampledf.phyman$spcode
+colnames(evo.matrix) <- sampledf.phyman$spcode
+evo.matrix
+
+#use the table to fill in values in phylo matrix with dimensions matching all the samples
+for (i in 1:nrow(D_evo_long)) {
+   evo.matrix[rownames(evo.matrix) == D_evo_long$spcode2[i],
+	colnames(evo.matrix) == D_evo_long$spcode[i]] <- D_evo_long$distance[i]
+	}
+dist.evo = as.dist(evo.matrix)
+
+dist_phylo_mant  = vegan::mantel(strep_bray_dm2,dist.evo, method = "pearson", permutations = 9999, na.rm = TRUE)
+dist_phylo_mant
+#Mantel statistic based on Pearson's product-moment correlation 
+
+#Call:
+#vegan::mantel(xdis = strep_bray_dm2, ydis = dist.evo, method = "pearson",      permutations = 9999, na.rm = TRUE) 
+
+#Mantel statistic r: 0.03676 
+#      Significance: 0.1571 
+
+#Upper quantiles of permutations (null model):
+#   90%    95%  97.5%    99% 
+#0.0493 0.0660 0.0822 0.0983 
+#Permutation: free
+#Number of permutations: 9999
 ```
 #System and session info
 ```{r}
